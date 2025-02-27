@@ -48,6 +48,21 @@ const productSchema = z.object({
     }),
   })).min(1, "Se requiere al menos una imagen"),
 })
+const defaultValues = {
+  name: '',
+  description: '',
+  price: '',
+  stock: '',
+  category_id: '',
+  featured: false,
+  images: [] as {
+    url: string;
+    color: {
+      name: string;
+      hex: string;
+    };
+  }[]
+}
 
 export function ProductForm() {
   const router = useRouter()
@@ -57,10 +72,7 @@ export function ProductForm() {
 
   const form = useForm<z.infer<typeof productSchema>>({
     resolver: zodResolver(productSchema),
-    defaultValues: {
-      featured: false,
-      images: [],
-    },
+    defaultValues,
   })
 
   useEffect(() => {

@@ -20,11 +20,12 @@ interface ImageUploadProps {
 }
 
 export function ImageUpload({
-  value,
+  value = [],
   onChange,
   onRemove
 }: ImageUploadProps) {
   const [loading, setLoading] = useState(false)
+  const [imageError, setImageError] = useState<string[]>([])
   const supabase = createClientComponentClient()
 
   const onUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -34,13 +35,28 @@ export function ImageUpload({
       const file = event.target.files?.[0]
       if (!file) return
 
-      const fileExt = file.name.split('.').pop()
-      const fileName = `${Math.random()}.${fileExt}`
-      const filePath = `product-images/${fileName}`
+      // Validar el tamaño del archivo (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        throw new Error('La imagen no debe superar los 5MB')
+      }
+
+      const fileExt = file.name.split('.').pop()?.toLowerCase()
+      const allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+      
+      if (!fileExt || !allowedExtensions.includes(fileExt)) {
+        throw new Error('Formato de archivo no soportado')
+      }
+
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
+      const filePath = `${fileName}`
 
       const { error: uploadError, data } = await supabase.storage
         .from('products')
-        .upload(filePath, file)
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: `image/${fileExt}`
+        })
 
       if (uploadError) {
         throw uploadError
@@ -50,35 +66,66 @@ export function ImageUpload({
         .from('products')
         .getPublicUrl(filePath)
 
-      onChange([...value, { 
-        url: publicUrl, 
-        color: {
-          name: '',
-          hex: ''
+      onChange([
+        ...value,
+        {
+          url: publicUrl,
+          color: {
+            name: '',
+            hex: '#000000'
+          }
         }
-      }])
+      ])
     } catch (error) {
       console.error('Error:', error)
+      alert(error instanceof Error ? error.message : 'Error al subir la imagen')
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleColorChange = (index: number, field: 'name' | 'hex', newValue: string) => {
+    const newImages = [...value]
+    newImages[index] = {
+      ...newImages[index],
+      color: {
+        ...newImages[index].color,
+        [field]: newValue
+      }
+    }
+    onChange(newImages)
+  }
+
+  const handleImageError = (index: number) => {
+    setImageError((prev) => [...prev, value[index].url])
   }
 
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         {value.map((image, index) => (
-          <div key={image.url} className="relative aspect-square">
-            <Image
-              src={image.url || "/placeholder.svg"}
-              alt="Product image"
-              className="object-cover rounded-lg"
-              fill
-            />
+          <div key={image.url || index} className="relative aspect-square bg-gray-100 rounded-lg overflow-hidden">
+            {!imageError.includes(image.url) ? (
+              <div className="relative w-full h-full">
+                <Image
+                  src={image.url || "/placeholder.svg"}
+                  alt={`Product image ${index + 1}`}
+                  className="object-cover"
+                  fill
+                  sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                  onError={() => handleImageError(index)}
+                  unoptimized
+                />
+              </div>
+            ) : (
+              <div className="flex items-center justify-center h-full text-sm text-gray-500">
+                Error al cargar la imagen
+              </div>
+            )}
             <button
               type="button"
               onClick={() => onRemove(image.url)}
-              className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+              className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600 transition-colors"
             >
               <X className="h-4 w-4" />
             </button>
@@ -86,23 +133,15 @@ export function ImageUpload({
               <Input
                 type="text"
                 placeholder="Nombre del color"
-                value={image.color.name}
-                onChange={(e) => {
-                  const newImages = [...value]
-                  newImages[index].color.name = e.target.value
-                  onChange(newImages)
-                }}
-                className="bg-white/80"
+                value={image.color.name || ''}
+                onChange={(e) => handleColorChange(index, 'name', e.target.value)}
+                className="bg-white/90 text-sm"
               />
               <Input
                 type="color"
-                value={image.color.hex}
-                onChange={(e) => {
-                  const newImages = [...value]
-                  newImages[index].color.hex = e.target.value
-                  onChange(newImages)
-                }}
-                className="h-8 bg-white/80"
+                value={image.color.hex || '#000000'}
+                onChange={(e) => handleColorChange(index, 'hex', e.target.value)}
+                className="h-8 bg-white/90 p-1"
               />
             </div>
           </div>
@@ -118,13 +157,17 @@ export function ImageUpload({
         >
           <input
             type="file"
-            accept="image/*"
+            accept="image/jpeg,image/png,image/gif,image/webp"
             onChange={onUpload}
             className="absolute inset-0 opacity-0 cursor-pointer"
+            disabled={loading}
           />
           <Upload className="h-4 w-4 mr-2" />
-          Subir Imagen
+          {loading ? "Subiendo..." : "Subir Imagen"}
         </Button>
+        <p className="text-sm text-gray-500">
+          Formatos soportados: JPG, PNG, GIF, WEBP. Máximo 5MB.
+        </p>
       </div>
     </div>
   )

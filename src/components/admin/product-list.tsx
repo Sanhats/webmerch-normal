@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import {
   Table,
   TableBody,
@@ -23,19 +23,57 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import { Badge } from "@/components/ui/badge"
 
 interface Product {
   id: string
   name: string
   price: number
   stock: number
-  category: string
   featured: boolean
+  category: {
+    id: string
+    name: string
+  } | null
+  product_images: {
+    id: string
+    url: string
+  }[]
 }
 
 export function ProductList() {
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
+  const supabase = createClientComponentClient()
+
+  const fetchProducts = async () => {
+    try {
+      setLoading(true)
+      const { data, error } = await supabase
+        .from('products')
+        .select(`
+          *,
+          category:categories(id, name),
+          product_images(id, url)
+        `)
+        .order('created_at', { ascending: false })
+
+      if (error) {
+        throw error
+      }
+
+      setProducts(data || [])
+    } catch (error) {
+      console.error('Error fetching products:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchProducts()
+  }, [])
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-ES', {
@@ -46,11 +84,61 @@ export function ProductList() {
 
   const handleDelete = async (id: string) => {
     try {
-      // TODO: Implementar eliminación
-      console.log('Eliminar producto:', id)
+      // Primero eliminamos las imágenes del storage
+      const { data: productImages } = await supabase
+        .from('product_images')
+        .select('url')
+        .eq('product_id', id)
+
+      for (const image of productImages || []) {
+        const fileName = image.url.split('/').pop()
+        if (fileName) {
+          await supabase.storage
+            .from('products')
+            .remove([fileName])
+        }
+      }
+
+      // Luego eliminamos el producto (las imágenes en la base de datos se eliminarán automáticamente por la restricción ON DELETE CASCADE)
+      const { error } = await supabase
+        .from('products')
+        .delete()
+        .eq('id', id)
+
+      if (error) throw error
+
+      // Actualizamos la lista
+      await fetchProducts()
     } catch (error) {
       console.error('Error al eliminar:', error)
+      alert('Error al eliminar el producto')
     }
+  }
+
+  if (loading) {
+    return (
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nombre</TableHead>
+              <TableHead>Precio</TableHead>
+              <TableHead>Stock</TableHead>
+              <TableHead>Categoría</TableHead>
+              <TableHead>Estado</TableHead>
+              <TableHead className="text-right">Acciones</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow>
+              <TableCell colSpan={6} className="text-center py-10">
+                Cargando productos...
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
+      </div>
+    )
   }
 
   return (
@@ -62,7 +150,7 @@ export function ProductList() {
             <TableHead>Precio</TableHead>
             <TableHead>Stock</TableHead>
             <TableHead>Categoría</TableHead>
-            <TableHead>Destacado</TableHead>
+            <TableHead>Estado</TableHead>
             <TableHead className="text-right">Acciones</TableHead>
           </TableRow>
         </TableHeader>
@@ -76,11 +164,20 @@ export function ProductList() {
           ) : (
             products.map((product) => (
               <TableRow key={product.id}>
-                <TableCell>{product.name}</TableCell>
+                <TableCell className="font-medium">{product.name}</TableCell>
                 <TableCell>{formatPrice(product.price)}</TableCell>
                 <TableCell>{product.stock}</TableCell>
-                <TableCell>{product.category}</TableCell>
-                <TableCell>{product.featured ? "Sí" : "No"}</TableCell>
+                <TableCell>{product.category?.name || 'Sin categoría'}</TableCell>
+                <TableCell>
+                  <div className="flex gap-2">
+                    {product.featured && (
+                      <Badge>Destacado</Badge>
+                    )}
+                    {product.stock === 0 && (
+                      <Badge variant="destructive">Sin Stock</Badge>
+                    )}
+                  </div>
+                </TableCell>
                 <TableCell className="text-right space-x-2">
                   <Link href={`/dashboard/products/${product.id}/edit`}>
                     <Button variant="ghost" size="icon">
@@ -97,12 +194,16 @@ export function ProductList() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>¿Estás seguro?</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Esta acción no se puede deshacer. Esto eliminará permanentemente el producto.
+                          Esta acción no se puede deshacer. Esto eliminará permanentemente el producto
+                          y todas sus imágenes asociadas.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction onClick={() => handleDelete(product.id)}>
+                        <AlertDialogAction 
+                          onClick={() => handleDelete(product.id)}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
                           Eliminar
                         </AlertDialogAction>
                       </AlertDialogFooter>

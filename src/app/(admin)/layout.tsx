@@ -1,6 +1,6 @@
 "use client"
 
-import { Package2, LayoutDashboard, Tags, Settings, LogOut } from 'lucide-react'
+import { Package2, LayoutDashboard, Tags,  LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -48,13 +48,7 @@ export default function AdminLayout({
               <Tags className="h-5 w-5" />
               Productos
             </Link>
-            <Link
-              href="/dashboard/settings"
-              className="flex items-center gap-2 p-2 rounded hover:bg-gray-800"
-            >
-              <Settings className="h-5 w-5" />
-              Configuración
-            </Link>
+            
             <Link
     href="/dashboard/categories"
     className="flex items-center gap-2 p-2 rounded hover:bg-gray-800"
