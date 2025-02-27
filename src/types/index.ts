@@ -5,7 +5,9 @@ export interface ProductImage {
     hex: string;
   };
 }
-
+export interface Category {
+  name: string;
+}
 export interface Product {
   id: string;
   name: string;

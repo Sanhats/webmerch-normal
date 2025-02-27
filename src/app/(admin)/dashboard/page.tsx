@@ -6,6 +6,24 @@ import { Package, Star, Tags } from 'lucide-react'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Skeleton } from "@/components/ui/skeleton"
 
+interface Category {
+  name: string;
+}
+
+interface Product {
+  id: string;
+  name: string;
+  price: number;
+  created_at: string;
+  category: Category | null;
+}
+
+interface DashboardStats {
+  totalProducts: number;
+  featuredProducts: number;
+  totalCategories: number;
+}
+
 interface DashboardStats {
   totalProducts: number
   featuredProducts: number
@@ -132,13 +150,7 @@ export default function DashboardPage() {
 }
 
 function RecentProducts() {
-  const [products, setProducts] = useState<Array<{
-    id: string
-    name: string
-    price: number
-    created_at: string
-    category: { name: string } | null
-  }>>([])
+  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const supabase = createClientComponentClient()
 
@@ -158,7 +170,17 @@ function RecentProducts() {
           .limit(5)
 
         if (error) throw error
-        setProducts(data || [])
+
+        // Transformar los datos para que coincidan con el tipo Product
+        const formattedData: Product[] = (data || []).map(item => ({
+          id: item.id,
+          name: item.name,
+          price: item.price,
+          created_at: item.created_at,
+          category: item.category ? { name: item.category.name } : null
+        }))
+
+        setProducts(formattedData)
       } catch (err) {
         console.error('Error fetching recent products:', err)
       } finally {
@@ -191,6 +213,40 @@ function RecentProducts() {
       </Card>
     )
   }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Productos Recientes</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-8">
+          {products.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No hay productos registrados</p>
+          ) : (
+            products.map((product) => (
+              <div key={product.id} className="flex items-center">
+                <div className="space-y-1">
+                  <p className="text-sm font-medium leading-none">{product.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {product.category?.name || 'Sin categoría'} ·{' '}
+                    {new Intl.NumberFormat('es-ES', {
+                      style: 'currency',
+                      currency: 'USD'
+                    }).format(product.price)}
+                  </p>
+                </div>
+                <div className="ml-auto text-sm text-muted-foreground">
+                  {new Date(product.created_at).toLocaleDateString()}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
 
   return (
     <Card>
