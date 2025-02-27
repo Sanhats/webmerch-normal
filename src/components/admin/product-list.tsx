@@ -73,7 +73,7 @@ export function ProductList() {
 
   useEffect(() => {
     fetchProducts()
-  }, [])
+  }, )
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-ES', {

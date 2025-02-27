@@ -6,17 +6,12 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import Image from "next/image"
 import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
+import type { ProductImage } from "@/types"
 
 interface ImageUploadProps {
-  value: {
-    url: string
-    color: {
-      name: string
-      hex: string
-    }
-  }[]
-  onChange: (value: any[]) => void
-  onRemove: (url: string) => void
+  value: ProductImage[];
+  onChange: (value: ProductImage[]) => void;
+  onRemove: (url: string) => void;
 }
 
 export function ImageUpload({
@@ -35,7 +30,6 @@ export function ImageUpload({
       const file = event.target.files?.[0]
       if (!file) return
 
-      // Validar el tamaño del archivo (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
         throw new Error('La imagen no debe superar los 5MB')
       }
@@ -50,7 +44,7 @@ export function ImageUpload({
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`
       const filePath = `${fileName}`
 
-      const { error: uploadError, data } = await supabase.storage
+      const { error: uploadError} = await supabase.storage
         .from('products')
         .upload(filePath, file, {
           cacheControl: '3600',
@@ -66,16 +60,15 @@ export function ImageUpload({
         .from('products')
         .getPublicUrl(filePath)
 
-      onChange([
-        ...value,
-        {
-          url: publicUrl,
-          color: {
-            name: '',
-            hex: '#000000'
-          }
+      const newImage: ProductImage = {
+        url: publicUrl,
+        color: {
+          name: '',
+          hex: '#000000'
         }
-      ])
+      }
+
+      onChange([...value, newImage])
     } catch (error) {
       console.error('Error:', error)
       alert(error instanceof Error ? error.message : 'Error al subir la imagen')
@@ -133,13 +126,13 @@ export function ImageUpload({
               <Input
                 type="text"
                 placeholder="Nombre del color"
-                value={image.color.name || ''}
+                value={image.color.name}
                 onChange={(e) => handleColorChange(index, 'name', e.target.value)}
                 className="bg-white/90 text-sm"
               />
               <Input
                 type="color"
-                value={image.color.hex || '#000000'}
+                value={image.color.hex}
                 onChange={(e) => handleColorChange(index, 'hex', e.target.value)}
                 className="h-8 bg-white/90 p-1"
               />
