@@ -61,7 +61,7 @@ export function CategoryList() {
 
   useEffect(() => {
     fetchCategories()
-  }, [])
+  }, )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
