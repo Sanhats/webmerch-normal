@@ -136,7 +136,7 @@ export function ProductForm() {
         if (imageError) throw imageError
       }
 
-      router.push('/dashboard/products')
+      router.push('/products')
       router.refresh()
     } catch (error) {
       console.error('Error al crear producto:', error)
