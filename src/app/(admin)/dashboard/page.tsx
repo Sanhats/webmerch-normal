@@ -102,7 +102,7 @@ function RecentProducts() {
       <CardHeader className="flex flex-row items-center justify-between">
         <CardTitle>Recent Products</CardTitle>
         <Button asChild variant="ghost" size="sm">
-          <Link href="/products">
+          <Link href="./products">
             View all
             <ArrowRight className="ml-2 h-4 w-4" />
           </Link>

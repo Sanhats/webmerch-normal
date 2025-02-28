@@ -1,5 +1,5 @@
 import { ProductForm } from "@/components/admin/product-form"
-import { authMiddleware } from "../../../middleware"
+import { authMiddleware } from "../../middleware"
 
 export default async function NewProductPage() {
   await authMiddleware()

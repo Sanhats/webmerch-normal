@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { FolderTree } from 'lucide-react'
+import { Toaster } from 'sonner' 
 
 export default function AdminLayout({
   children,
@@ -42,7 +43,7 @@ export default function AdminLayout({
               Dashboard
             </Link>
             <Link
-              href="/dashboard/products"
+              href="/products"
               className="flex items-center gap-2 p-2 rounded hover:bg-gray-800"
             >
               <Tags className="h-5 w-5" />
@@ -77,6 +78,7 @@ export default function AdminLayout({
         </header>
         <div className="p-6">
           {children}
+          <Toaster />
         </div>
       </main>
     </div>
