@@ -7,70 +7,33 @@ import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import Link from 'next/link'
+import { formatter } from '@/lib/utils'
+import type { Product, DashboardStats, SupabaseProduct } from '@/types'
 
-interface Category {
-  name: string;
+interface StatsCardProps {
+  title: string
+  value: string | number
+  icon: React.ReactNode
+  loading?: boolean
 }
 
-interface Product {
-  id: string;
-  name: string;
-  price: number;
-  created_at: string;
-  category: Category | null;
-}
-
-interface DashboardStats {
-  totalProducts: number;
-  featuredProducts: number;
-  totalCategories: number;
-}
-
-function StatsCards({ stats, loading }: { stats: DashboardStats; loading: boolean }) {
+function StatsCard({ title, value, icon, loading }: StatsCardProps) {
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Productos</CardTitle>
-          <Package className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <Skeleton className="h-7 w-20" />
-          ) : (
-            <div className="text-2xl font-bold">{stats.totalProducts}</div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Productos Destacados</CardTitle>
-          <Star className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <Skeleton className="h-7 w-20" />
-          ) : (
-            <div className="text-2xl font-bold">{stats.featuredProducts}</div>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Categorías</CardTitle>
-          <Tags className="h-4 w-4 text-muted-foreground" />
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <Skeleton className="h-7 w-20" />
-          ) : (
-            <div className="text-2xl font-bold">{stats.totalCategories}</div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">
+          {title}
+        </CardTitle>
+        {icon}
+      </CardHeader>
+      <CardContent>
+        {loading ? (
+          <Skeleton className="h-7 w-[100px]" />
+        ) : (
+          <div className="text-2xl font-bold">{value}</div>
+        )}
+      </CardContent>
+    </Card>
   )
 }
 
@@ -85,23 +48,25 @@ function RecentProducts() {
         const { data, error } = await supabase
           .from('products')
           .select(`
-            id,
-            name,
-            price,
-            created_at,
-            category:categories(name)
+            *,
+            category:categories(*)
           `)
           .order('created_at', { ascending: false })
           .limit(5)
 
         if (error) throw error
 
-        const formattedData: Product[] = (data || []).map(item => ({
+        const formattedData: Product[] = (data || []).map((item: SupabaseProduct) => ({
           id: item.id,
           name: item.name,
+          description: item.description,
           price: item.price,
-          created_at: item.created_at,
-          category: item.category ? { name: item.category.name } : null
+          stock: item.stock,
+          category_id: item.category_id,
+          featured: item.featured,
+          images: item.images || [],
+          category: item.category || undefined,
+          created_at: item.created_at
         }))
 
         setProducts(formattedData)
@@ -119,18 +84,12 @@ function RecentProducts() {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Productos Recientes</CardTitle>
+          <CardTitle>Recent Products</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="flex items-center space-x-4">
-                <Skeleton className="h-12 w-12 rounded-full" />
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-[250px]" />
-                  <Skeleton className="h-4 w-[200px]" />
-                </div>
-              </div>
+            {[...Array(5)].map((_, i) => (
+              <Skeleton key={i} className="h-12 w-full" />
             ))}
           </div>
         </CardContent>
@@ -141,44 +100,34 @@ function RecentProducts() {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle>Productos Recientes</CardTitle>
-        <Link href="/dashboard/products">
-          <Button variant="ghost" size="sm" className="gap-2">
-            Ver todos
-            <ArrowRight className="h-4 w-4" />
-          </Button>
-        </Link>
+        <CardTitle>Recent Products</CardTitle>
+        <Button asChild variant="ghost" size="sm">
+          <Link href="/products">
+            View all
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Link>
+        </Button>
       </CardHeader>
       <CardContent>
-        <div className="space-y-8">
-          {products.length === 0 ? (
-            <div className="text-center py-6">
-              <p className="text-sm text-muted-foreground">No hay productos registrados</p>
-              <Link href="/dashboard/products/new">
-                <Button variant="link" className="mt-2">
-                  Agregar primer producto
-                </Button>
-              </Link>
-            </div>
-          ) : (
-            products.map((product) => (
-              <div key={product.id} className="flex items-center">
-                <div className="space-y-1">
-                  <p className="text-sm font-medium leading-none">{product.name}</p>
+        <div className="space-y-4">
+          {products.map((product) => (
+            <div
+              key={product.id}
+              className="flex items-center justify-between"
+            >
+              <div className="flex items-center">
+                <div>
+                  <p className="font-medium">{product.name}</p>
                   <p className="text-sm text-muted-foreground">
-                    {product.category?.name || 'Sin categoría'} ·{' '}
-                    {new Intl.NumberFormat('es-ES', {
-                      style: 'currency',
-                      currency: 'USD'
-                    }).format(product.price)}
+                    {product.category?.name || 'No category'}
                   </p>
                 </div>
-                <div className="ml-auto text-sm text-muted-foreground">
-                  {new Date(product.created_at).toLocaleDateString()}
-                </div>
               </div>
-            ))
-          )}
+              <div className="font-medium">
+                {formatter.format(product.price)}
+              </div>
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>
@@ -192,93 +141,66 @@ export default function DashboardPage() {
     totalCategories: 0
   })
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const supabase = createClientComponentClient()
 
   useEffect(() => {
-    const fetchStats = async () => {
+    const fetchDashboardStats = async () => {
       try {
-        setLoading(true)
-        setError(null)
-
-        // Obtener total de productos
-        const { count: totalProducts, error: productsError } = await supabase
+        // Get total products
+        const { count: totalProducts } = await supabase
           .from('products')
           .select('*', { count: 'exact', head: true })
 
-        if (productsError) throw productsError
-
-        // Obtener productos destacados
-        const { count: featuredProducts, error: featuredError } = await supabase
+        // Get featured products
+        const { count: featuredProducts } = await supabase
           .from('products')
           .select('*', { count: 'exact', head: true })
           .eq('featured', true)
 
-        if (featuredError) throw featuredError
-
-        // Obtener total de categorías
-        const { count: totalCategories, error: categoriesError } = await supabase
+        // Get total categories
+        const { count: totalCategories } = await supabase
           .from('categories')
           .select('*', { count: 'exact', head: true })
-
-        if (categoriesError) throw categoriesError
 
         setStats({
           totalProducts: totalProducts || 0,
           featuredProducts: featuredProducts || 0,
           totalCategories: totalCategories || 0
         })
-      } catch (err) {
-        console.error('Error fetching stats:', err)
-        setError('Error al cargar las estadísticas')
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error)
       } finally {
         setLoading(false)
       }
     }
 
-    fetchStats()
+    fetchDashboardStats()
   }, [supabase])
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
-        <Link href="/dashboard/products/new">
-          <Button>Nuevo Producto</Button>
-        </Link>
+    <div className="flex-1 space-y-4 p-8 pt-6">
+      <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+      <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
+        <StatsCard
+          title="Total Products"
+          value={stats.totalProducts}
+          icon={<Package className="h-4 w-4 text-muted-foreground" />}
+          loading={loading}
+        />
+        <StatsCard
+          title="Featured Products"
+          value={stats.featuredProducts}
+          icon={<Star className="h-4 w-4 text-muted-foreground" />}
+          loading={loading}
+        />
+        <StatsCard
+          title="Categories"
+          value={stats.totalCategories}
+          icon={<Tags className="h-4 w-4 text-muted-foreground" />}
+          loading={loading}
+        />
       </div>
-
-      {error ? (
-        <div className="bg-destructive/15 text-destructive px-4 py-3 rounded-lg">
-          {error}
-        </div>
-      ) : (
-        <>
-          <StatsCards stats={stats} loading={loading} />
-          <div className="grid gap-4 md:grid-cols-2">
-            <RecentProducts />
-            <Card>
-              <CardHeader>
-                <CardTitle>Accesos Rápidos</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Link href="/dashboard/products" className="block">
-                  <Button variant="outline" className="w-full justify-start gap-2">
-                    <Package className="h-4 w-4" />
-                    Gestionar Productos
-                  </Button>
-                </Link>
-                <Link href="/dashboard/categories" className="block">
-                  <Button variant="outline" className="w-full justify-start gap-2">
-                    <Tags className="h-4 w-4" />
-                    Gestionar Categorías
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-        </>
-      )}
+      <RecentProducts />
     </div>
   )
 }
