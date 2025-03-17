@@ -1,14 +1,16 @@
-'use client'
+"use client"
 
-import { useEffect, useState } from 'react'
+import type React from "react"
+
+import { useEffect, useState } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Package, Star, Tags, ArrowRight } from 'lucide-react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { Package, Star, Tags, ArrowRight } from "lucide-react"
+import { createClientComponentClient } from "@supabase/auth-helpers-nextjs"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
-import Link from 'next/link'
-import { formatter } from '@/lib/utils'
-import type { Product, DashboardStats, SupabaseProduct } from '@/types'
+import Link from "next/link"
+import { formatter } from "@/lib/utils"
+import type { Product, DashboardStats, SupabaseProduct } from "@/types"
 
 interface StatsCardProps {
   title: string
@@ -21,16 +23,14 @@ function StatsCard({ title, value, icon, loading }: StatsCardProps) {
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">
-          {title}
-        </CardTitle>
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
         {icon}
       </CardHeader>
       <CardContent>
         {loading ? (
           <Skeleton className="h-7 w-[100px]" />
         ) : (
-          <div className="text-2xl font-bold">{value}</div>
+          <div className="text-xl md:text-2xl font-bold">{value}</div>
         )}
       </CardContent>
     </Card>
@@ -46,12 +46,12 @@ function RecentProducts() {
     const fetchRecentProducts = async () => {
       try {
         const { data, error } = await supabase
-          .from('products')
+          .from("products")
           .select(`
             *,
             category:categories(*)
           `)
-          .order('created_at', { ascending: false })
+          .order("created_at", { ascending: false })
           .limit(5)
 
         if (error) throw error
@@ -66,12 +66,12 @@ function RecentProducts() {
           featured: item.featured,
           images: item.images || [],
           category: item.category || undefined,
-          created_at: item.created_at
+          created_at: item.created_at,
         }))
 
         setProducts(formattedData)
       } catch (err) {
-        console.error('Error fetching recent products:', err)
+        console.error("Error fetching recent products:", err)
       } finally {
         setLoading(false)
       }
@@ -99,7 +99,7 @@ function RecentProducts() {
 
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between">
+      <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
         <CardTitle>Recent Products</CardTitle>
         <Button asChild variant="ghost" size="sm">
           <Link href="./products">
@@ -113,19 +113,15 @@ function RecentProducts() {
           {products.map((product) => (
             <div
               key={product.id}
-              className="flex items-center justify-between"
+              className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2"
             >
-              <div className="flex items-center">
+              <div className="flex items-start sm:items-center">
                 <div>
                   <p className="font-medium">{product.name}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {product.category?.name || 'No category'}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{product.category?.name || "No category"}</p>
                 </div>
               </div>
-              <div className="font-medium">
-                {formatter.format(product.price)}
-              </div>
+              <div className="font-medium">{formatter.format(product.price)}</div>
             </div>
           ))}
         </div>
@@ -138,7 +134,7 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats>({
     totalProducts: 0,
     featuredProducts: 0,
-    totalCategories: 0
+    totalCategories: 0,
   })
   const [loading, setLoading] = useState(true)
   const supabase = createClientComponentClient()
@@ -147,28 +143,24 @@ export default function DashboardPage() {
     const fetchDashboardStats = async () => {
       try {
         // Get total products
-        const { count: totalProducts } = await supabase
-          .from('products')
-          .select('*', { count: 'exact', head: true })
+        const { count: totalProducts } = await supabase.from("products").select("*", { count: "exact", head: true })
 
         // Get featured products
         const { count: featuredProducts } = await supabase
-          .from('products')
-          .select('*', { count: 'exact', head: true })
-          .eq('featured', true)
+          .from("products")
+          .select("*", { count: "exact", head: true })
+          .eq("featured", true)
 
         // Get total categories
-        const { count: totalCategories } = await supabase
-          .from('categories')
-          .select('*', { count: 'exact', head: true })
+        const { count: totalCategories } = await supabase.from("categories").select("*", { count: "exact", head: true })
 
         setStats({
           totalProducts: totalProducts || 0,
           featuredProducts: featuredProducts || 0,
-          totalCategories: totalCategories || 0
+          totalCategories: totalCategories || 0,
         })
       } catch (error) {
-        console.error('Error fetching dashboard stats:', error)
+        console.error("Error fetching dashboard stats:", error)
       } finally {
         setLoading(false)
       }
@@ -178,8 +170,8 @@ export default function DashboardPage() {
   }, [supabase])
 
   return (
-    <div className="flex-1 space-y-4 p-8 pt-6">
-      <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+    <div className="flex-1 space-y-4 p-4 sm:p-6 md:p-8 pt-6">
+      <h2 className="text-2xl md:text-3xl font-bold tracking-tight">Dashboard</h2>
       <div className="grid gap-4 grid-cols-1 md:grid-cols-3">
         <StatsCard
           title="Total Products"
@@ -204,3 +196,4 @@ export default function DashboardPage() {
     </div>
   )
 }
+
